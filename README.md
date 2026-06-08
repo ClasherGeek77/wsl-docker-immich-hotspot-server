@@ -19,6 +19,14 @@ and TCP-stability fixes that make it survive reboots unattended.
 | **Tailscale** | private mesh access to the box |
 | **Hotspot** | Wi-Fi Direct SoftAP + Windows ICS, upstream = USB LTE modem |
 
+## Hardware
+
+Runs on a **Fujitsu Lifebook U938** (Core i5/i7 Gen 8) + an **$8 USB 4G LTE modem** —
+**~$189 total**. The modem's advertised "500Mbps" is marketing; it is LTE Cat 4
+(~20-40 Mbps real), hard-capped by its own SoC, which is exactly why the TCP tuning
+exists. Full bill of materials, the honest modem spec, and the cheap-TCP-trick
+rationale: **[docs/hardware.md](docs/hardware.md)**.
+
 ## Repo layout
 
 ```
