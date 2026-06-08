@@ -1,8 +1,9 @@
 # start-hotspot-now.ps1
-# Starts ThienServer hotspot - works as SYSTEM or interactive.
+# Starts the hotspot - works as SYSTEM or interactive.
 # HARDENED 2026-06-06: waits for an internet profile (USB modem may be slow at
 # boot), then verifies tethering actually reaches On and RETRIES, instead of
 # fire-and-forget (which silently no-ops if the modem/radio isn't ready yet).
+# SSID/passphrase come from $env:HOTSPOT_SSID / $env:HOTSPOT_PASSPHRASE.
 # Logs to C:\hotspot-log.txt
 
 $logFile = "C:\hotspot-log.txt"
@@ -10,6 +11,8 @@ function Log($msg) {
     $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     "$ts - $msg" | Out-File -Append -FilePath $logFile -Encoding UTF8
 }
+
+. (Join-Path $PSScriptRoot 'lib\net-tune.ps1')
 
 Log "=== start-hotspot-now.ps1 (hardened) ==="
 
@@ -72,23 +75,11 @@ try {
         Log "Tethering On. Clients=$($tm.ClientCount)/$($tm.MaxClientCount)"
         $virtual = Get-NetAdapter | Where-Object { $_.Name -match "Local Area" } | Select-Object -First 1
         if ($virtual) { Log "Virtual adapter: $($virtual.Name) ($($virtual.Status)) MAC=$($virtual.MacAddress)" }
+        # Re-apply TCP/QoS tuning to the freshly-(re)created hotspot adapter.
+        Set-HotspotTcpTuning -Log ${function:Log}
     } else {
         Log "ERROR: Tethering did not reach On after retries (state=$($tm.TetheringOperationalState))"
     }
 } catch {
     Log "ERROR: $_"
 }
-
-
-    # --- TCP/QoS hardening (2026-06-08) ---
-    # Re-apply after each hotspot start: MSS clamping + remove VirtualBox NDIS filter.
-    if ($on) {
-        $hotspotAdapter = (Get-NetAdapter | Where-Object { $_.InterfaceDescription -like 'Microsoft Wi-Fi Direct Virtual Adapter*' -and $_.Status -eq 'Up' }).Name
-        if ($hotspotAdapter) {
-            Set-NetIPInterface -InterfaceAlias $hotspotAdapter -ClampMss Enabled -ErrorAction SilentlyContinue
-            Disable-NetAdapterBinding -Name $hotspotAdapter -ComponentID vboxnetflt -ErrorAction SilentlyContinue
-            Log ('TCP hardening applied to ' + $hotspotAdapter + ' (ClampMss=On, vboxnetflt unbound)')
-        }
-    }
-
-

@@ -41,9 +41,12 @@ windows/
     wsl-health.ps1          # 5-min self-heal; also re-applies modem ClampMss
     start-hotspot-now.ps1   # hardened hotspot start + re-applies hotspot TCP tuning
     tcp-tune-hotspot.ps1    # standalone TCP/QoS tuning (one-shot apply)
+    lib/net-tune.ps1        # shared ClampMss / vboxnetflt / global-TCP helpers
+                            #   (dot-sourced by the 3 scripts above)
     rebuild_tasks.ps1       # (re)create AutoStartWSL + WSLDockerHealth scheduled tasks
     fix_health.ps1          # repair WSLDockerHealth trigger
-    fix-wsl-final.ps1       # historical: Run-key based WSL autostart attempt
+archive/
+  fix-wsl-final.ps1         # superseded Run-key WSL autostart attempt (kept for history)
 docs/
   server-journal.md         # running journal of state, tasks, root-causes, fixes
   FIXES_APPLIED.md          # detailed boot-reliability root-cause writeup
@@ -80,7 +83,9 @@ subdomain. The compose runs zrok in `share reserved … --headless` mode against
 `immich-server:2283`.
 
 ### 3. Scheduled tasks (boot reliability)
-Copy `windows/scripts/*.ps1` to `C:\`, then from an elevated PowerShell:
+Copy `windows/scripts/*.ps1` **and the `windows/scripts/lib/` folder** to `C:\`
+(the scripts dot-source `C:\lib\net-tune.ps1` for the shared TCP-tuning helpers),
+then from an elevated PowerShell:
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\rebuild_tasks.ps1
 ```

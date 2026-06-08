@@ -2,7 +2,8 @@
 # task. Ensures the keepalive anchor task is running and docker is up. Exits fast.
 #
 # If the keepalive task (AutoStartWSL) is not running, (re)start it. Then make a
-# best-effort docker check. This is the "belt and suspenders" layer.
+# best-effort docker check. This is the "belt and suspenders" layer. Finally it
+# re-applies the USB-modem ClampMss (runtime-only, resets on reboot).
 
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
@@ -13,6 +14,8 @@ $KeepaliveTask = 'AutoStartWSL'
 function Log($msg) {
   ('[' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '] ' + $msg) | Out-File -FilePath $LogFile -Append -Encoding utf8
 }
+
+. (Join-Path $PSScriptRoot 'lib\net-tune.ps1')
 
 # 1) Ensure the keepalive task is running.
 $task = Get-ScheduledTask -TaskName $KeepaliveTask -ErrorAction SilentlyContinue
@@ -38,14 +41,5 @@ if ($active -notmatch 'active') {
   Log 'Docker active. OK.'
 }
 
-
-# 3) Re-apply ClampMss on USB modem (Ethernet 5) — runtime-only setting, resets on reboot.
-$modem = Get-NetAdapter | Where-Object { $_.InterfaceDescription -like 'Remote NDIS*' -and $_.Status -eq 'Up' } | Select-Object -First 1
-if ($modem) {
-    Set-NetIPInterface -InterfaceAlias $modem.Name -ClampMss Enabled -ErrorAction SilentlyContinue
-    Log ('ClampMss re-applied to ' + $modem.Name)
-} else {
-    Log 'ClampMss: USB modem not up, skipped.'
-}
-
-
+# 3) Re-apply ClampMss on the USB modem (runtime-only, resets on reboot).
+Set-ModemClampMss -Log ${function:Log}
