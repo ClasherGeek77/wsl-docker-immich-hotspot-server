@@ -1,128 +1,123 @@
-# home-server-repro
+# wsl-docker-immich-hotspot-server
 
-Reproducible setup for a Windows 10 IoT box running a **WSL2 + Docker** home server
-(Immich photo server) exposed publicly via **zrok**, reachable over **Tailscale**,
-and acting as a **Wi-Fi hotspot** off a USB LTE modem — with all the boot-reliability
-and TCP-stability fixes that make it survive reboots unattended.
+A Windows laptop that is **both a self-hosted photo server and a portable Wi-Fi
+router** — WSL2 + Docker running [Immich](https://immich.app), exposed publicly via
+[zrok](https://zrok.io), reachable over [Tailscale](https://tailscale.com), sharing a
+USB-LTE uplink as a Wi-Fi hotspot — with all the boot-reliability and TCP-stability
+fixes that let it survive reboots completely unattended.
 
-> Host of record: `<hostname>` (Windows 10 IoT Enterprise LTSC, build 19044).
-> SSH alias `pc-remote`. This repo lets you rebuild it from scratch.
+Runs on a **~$189 setup** (used Fujitsu Lifebook U938 + an $8 USB LTE modem).
+See **[docs/hardware.md](docs/hardware.md)** for the bill of materials and why a cheap
+modem needs a software TCP trick.
 
-## What's in the box
+---
 
-| Layer | What it is |
-|-------|-----------|
-| **WSL2** (Ubuntu-22.04) | Linux runtime hosting Docker |
-| **Docker** | systemd-managed; `docker.service` enabled |
-| **Immich** | self-hosted photos — `immich/docker-compose.yml` |
-| **zrok** | public HTTPS tunnel to Immich (`https://<share>.share.zrok.io`) |
-| **Tailscale** | private mesh access to the box |
-| **Hotspot** | Wi-Fi Direct SoftAP + Windows ICS, upstream = USB LTE modem |
+## ⚡ Quick start (one command)
 
-## Hardware
+From an **elevated PowerShell**, at the repo root:
 
-Runs on a **Fujitsu Lifebook U938** (Core i5/i7 Gen 8) + an **$8 USB 4G LTE modem** —
-**~$189 total**. The modem's advertised "500Mbps" is marketing — it is LTE Cat 4
-(~20-40 Mbps over USB to the laptop), and the phone-facing hotspot is really capped by
-the laptop's Intel AC 8265 at ~12-13 Mbps. The two bottlenecks happen to match, and
-local Immich uploads are plenty fast. The cheap modem is also exactly why the TCP
-tuning exists. Full bill of materials, the honest modem spec, and the cheap-TCP-trick
-rationale: **[docs/hardware.md](docs/hardware.md)**.
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
 
-## Repo layout
+That's it. The installer is interactive and safe to re-run — it checks prerequisites,
+stages the scripts to `C:\home-server\`, prompts for your secrets (writes a gitignored
+`immich/.env`), registers the scheduled tasks, brings up the Docker stack, starts the
+hotspot, applies the TCP tuning, and prints a health summary.
+
+> Prereqs it expects: WSL2 with `Ubuntu-22.04`, Docker installed inside WSL
+> (`systemctl enable docker`), Tailscale joined, and the USB LTE modem plugged in.
+
+---
+
+## 🗺️ Architecture
 
 ```
+ Phone (TikTok / WhatsApp / Immich app)
+    │  Wi-Fi
+    ▼
+ ┌─────────────────────── Fujitsu Lifebook U938 ───────────────────────┐
+ │  Wi-Fi Direct hotspot  ──►  Windows ICS (NAT)                        │
+ │                                   │                                  │
+ │  WSL2 (Ubuntu-22.04)              │ USB                              │
+ │   └─ Docker ─ Immich + Postgres + Redis + ML + zrok                  │
+ │        │                          ▼                                  │
+ │        │                  USB 4G LTE modem (Remote NDIS)             │
+ │   Tailscale (mesh)                │  LTE                             │
+ └────────│──────────────────────────│──────────────────────────────────┘
+          ▼                          ▼
+   private mesh access        Internet ──► zrok public HTTPS tunnel
+```
+
+The single hard problem this repo solves: **WSL tears down its VM when no Linux session
+is attached → kills `dockerd` → zrok returns 502.** The fix is a *keepalive anchor* —
+a foreground `wsl … sleep` loop held open by a scheduled task. Full forensic detail in
+**[docs/journal/](docs/journal/)**.
+
+---
+
+## 📂 Repo layout
+
+```
+install.ps1                  ⭐ one-click installer (stages to C:\home-server\)
 immich/
-  docker-compose.yml        # Immich + Postgres + Redis + ML + zrok (verbatim)
-  .env.example              # copy to .env, fill secrets (gitignored)
-windows/
-  scripts/
-    wsl-up.ps1              # boots WSL, ensures Docker, BLOCKS as keepalive anchor
-    wsl-health.ps1          # 5-min self-heal; also re-applies modem ClampMss
-    start-hotspot-now.ps1   # hardened hotspot start + re-applies hotspot TCP tuning
-    tcp-tune-hotspot.ps1    # standalone TCP/QoS tuning (one-shot apply)
-    lib/net-tune.ps1        # shared ClampMss / vboxnetflt / global-TCP helpers
-                            #   (dot-sourced by the 3 scripts above)
-    rebuild_tasks.ps1       # (re)create AutoStartWSL + WSLDockerHealth scheduled tasks
-    fix_health.ps1          # repair WSLDockerHealth trigger
-archive/
-  fix-wsl-final.ps1         # superseded Run-key WSL autostart attempt (kept for history)
+  docker-compose.yml         Immich + Postgres + Redis + ML + zrok
+  .env.example               copy to .env, fill secrets (gitignored)
+windows/                     Windows-side, split by ROLE
+  runtime/                   scripts the system runs ITSELF
+    keepalive-anchor.ps1       holds the WSL VM open (task: AutoStartWSL)
+    health-watchdog.ps1        5-min self-heal (task: WSLDockerHealth)
+    hotspot-start.ps1          hotspot bring-up + verify/retry
+  setup/                     scripts run ONCE at install time
+    register-tasks.ps1         (re)register the scheduled tasks
+    tcp-tune.ps1               global + per-adapter TCP/QoS tuning
+  lib/
+    network-tuning.ps1         shared ClampMss / vboxnetflt / global-TCP helpers
+  README.md                  expert deep-dive: each script + when it fires
 docs/
-  server-journal.md         # running journal of state, tasks, root-causes, fixes
-  FIXES_APPLIED.md          # detailed boot-reliability root-cause writeup
+  hardware.md                bill of materials + the cheap-TCP-trick rationale
+  journal/                   dated forensic log (history, not spec)
+    FIXES_APPLIED.md
+    server-journal.md
 ```
 
-## The core problem this solves
+The **`runtime/` vs `setup/`** split is the thing to internalize: `runtime/` scripts are
+invoked by Windows on a schedule or forever; `setup/` scripts you (or `install.ps1`) run
+once. See **[windows/README.md](windows/README.md)** for the per-script deep-dive.
 
-**WSL tears down its VM when no Linux session is attached** → kills `dockerd` → kills
-all containers → zrok returns **502**. SYSTEM-context WSL is blocked by WSL itself
-(`WSL_E_LOCAL_SYSTEM_NOT_SUPPORTED`), and interactive-logon tasks don't fire on a
-headless boot. The fix is a **keepalive anchor**: a foreground `wsl … sleep` loop
-(`wsl-up.ps1`) run by a scheduled task as the user (LogonType=Password, "run whether
-logged on or not"), which holds the WSL VM open forever. A 5-min health task
-(`wsl-health.ps1`) is the belt-and-suspenders layer.
+---
 
-See `docs/FIXES_APPLIED.md` and `docs/server-journal.md` for the full forensic trail.
+## 🔧 Manual operation (if you skip the installer)
 
-## Bring-up from scratch
-
-### 1. Windows prerequisites
-- Enable WSL2 + install `Ubuntu-22.04`
-- Inside WSL: install Docker, `systemctl enable docker`
-- Install Tailscale (Windows), join your tailnet
-- USB LTE modem plugged in (shows as **Remote NDIS** adapter)
-
-### 2. Immich + zrok
-```bash
-cd immich
-cp .env.example .env        # then edit .env with real secrets
-docker compose up -d
-```
-`ZROK_ENABLE_TOKEN` comes from your zrok account; `ZROK_SHARE_NAME` is your public
-subdomain. The compose runs zrok in `share reserved … --headless` mode against
-`immich-server:2283`.
-
-### 3. Scheduled tasks (boot reliability)
-Copy `windows/scripts/*.ps1` **and the `windows/scripts/lib/` folder** to `C:\`
-(the scripts dot-source `C:\lib\net-tune.ps1` for the shared TCP-tuning helpers),
-then from an elevated PowerShell:
 ```powershell
-powershell -ExecutionPolicy Bypass -File C:\rebuild_tasks.ps1
+# 1. Secrets
+cp immich\.env.example immich\.env   # then edit with real values
+
+# 2. Stage scripts (installer normally does this) to C:\home-server\{runtime,setup,lib}
+
+# 3. Register tasks (point them at the staged runtime dir)
+windows\setup\register-tasks.ps1 -RuntimeDir C:\home-server\runtime
+
+# 4. Immich + zrok
+wsl -d Ubuntu-22.04 -u root -- bash -c "cd /mnt/d/home-server/immich && docker compose up -d"
+
+# 5. Hotspot + TCP tuning
+C:\home-server\runtime\hotspot-start.ps1
+C:\home-server\setup\tcp-tune.ps1
 ```
-This registers:
-- **AutoStartWSL** — AtStartup + AtLogon → `wsl-up.ps1` (keepalive anchor, RestartCount 999)
-- **WSLDockerHealth** — every 5 min → `wsl-health.ps1`
 
-### 4. Hotspot
+## ✅ Health check
+
 ```powershell
-powershell -ExecutionPolicy Bypass -File C:\start-hotspot-now.ps1
-```
-Hardened: waits up to ~90s for the modem's InternetAccess profile, then
-Start + verify + retry until tethering is On. SSID/passphrase are set inside the script.
-
-### 5. TCP stability tuning (streaming over the hotspot)
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\tcp-tune-hotspot.ps1
-```
-Stabilises TikTok scrolling / WhatsApp calls over the ICS+USB-modem path. Global bits
-persist in the registry; per-adapter bits are re-applied automatically by
-`start-hotspot-now.ps1` (hotspot) and `wsl-health.ps1` (modem). See the journal entry
-"TCP/Hotspot stability fix" for the root-cause analysis.
-
-## Secrets
-
-Nothing secret is committed. All sensitive values live in `immich/.env`
-(gitignored); the template is `immich/.env.example`. zrok/ziti identity files
-(`.zrok/`, `.zrok2/`) are gitignored too.
-
-## Verifying it's healthy
-```powershell
-# Tasks running
 Get-ScheduledTask | ? { $_.TaskName -match 'WSL|Hotspot|Docker' } | ft TaskName,State
-# Docker up inside WSL
 wsl -d Ubuntu-22.04 -u root -- systemctl is-active docker
-# Public tunnel
 curl -I https://<your-share>.share.zrok.io      # expect HTTP 200
-# TCP tuning landed
 netsh int tcp show global | findstr /i "auto-tuning ecn"
 ```
+
+## 🔒 Secrets
+
+Nothing secret is committed. Real values live in `immich/.env` (gitignored); the
+template is `immich/.env.example`. The hotspot passphrase and zrok token are read from
+that env file — never hardcode them. zrok/ziti identity (`.zrok/`, `.zrok2/`) is
+gitignored too.

@@ -1,4 +1,4 @@
-# wsl-up.ps1 — Boot WSL, ensure Docker, then BLOCK as the keepalive anchor.
+# keepalive-anchor.ps1 — Boot WSL, ensure Docker, then BLOCK as the keepalive anchor.
 #
 # Root cause addressed: WSL shuts down its VM when no Linux session is attached,
 # which kills dockerd + all containers (=> zrok 502). systemd starts docker fine
@@ -11,7 +11,7 @@
 # This script is meant to be the action of a scheduled task that runs continuously.
 # It is also safe to run from the health task: if an anchor is already running it
 # starts another harmless one (sleep), but the health task should normally just
-# call wsl-up-health.ps1 (non-blocking) instead. See deployment notes.
+# call health-watchdog.ps1 (non-blocking) instead. See deployment notes.
 
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
@@ -43,7 +43,7 @@ function Ensure-Docker {
   return 'FAILED'
 }
 
-Log '=== wsl-up start (keepalive mode) ==='
+Log '=== keepalive-anchor start ==='
 
 # Bring docker up.
 $state = Ensure-Docker

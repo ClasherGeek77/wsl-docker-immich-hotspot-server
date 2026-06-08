@@ -41,7 +41,7 @@ Internet ──► Immich exposed via zrok · box reachable via Tailscale
   hungry during indexing) and that **photo storage lives on the D: drive**
   (`/mnt/d/home-server/photos`), not the system SSD.
 - **USB LTE modem** — the upstream internet. It is the `Remote NDIS` interface that
-  all the TCP tuning targets (see `windows/scripts/tcp-tune-hotspot.ps1`).
+  all the TCP tuning targets (see `windows/setup/tcp-tune.ps1`).
 
 ## About that "500Mbps" 🙄
 
@@ -119,7 +119,7 @@ AQM, we spent **$8 on a dumb modem** and made up the difference with a handful o
 hardware to config.
 
 Because those per-adapter settings are runtime-only, they're re-applied automatically:
-`wsl-health.ps1` re-clamps the modem every 5 min, and `start-hotspot-now.ps1`
+`health-watchdog.ps1` re-clamps the modem every 5 min, and `hotspot-start.ps1`
 re-applies the hotspot tuning on each start. The global bits (`autotuning`, `ECN`,
 `CTCP`) persist in the registry across reboots.
 

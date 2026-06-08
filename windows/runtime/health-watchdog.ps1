@@ -1,4 +1,4 @@
-# wsl-health.ps1 — Non-blocking self-heal check, run every 5 min by a scheduled
+# health-watchdog.ps1 — Non-blocking self-heal check, run every 5 min by a scheduled
 # task. Ensures the keepalive anchor task is running and docker is up. Exits fast.
 #
 # If the keepalive task (AutoStartWSL) is not running, (re)start it. Then make a
@@ -15,7 +15,7 @@ function Log($msg) {
   ('[' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '] ' + $msg) | Out-File -FilePath $LogFile -Append -Encoding utf8
 }
 
-. (Join-Path $PSScriptRoot 'lib\net-tune.ps1')
+. (Join-Path $PSScriptRoot '..\lib\network-tuning.ps1')
 
 # 1) Ensure the keepalive task is running.
 $task = Get-ScheduledTask -TaskName $KeepaliveTask -ErrorAction SilentlyContinue

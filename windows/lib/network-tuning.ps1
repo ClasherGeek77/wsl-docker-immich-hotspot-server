@@ -1,4 +1,4 @@
-# net-tune.ps1 — shared TCP/QoS tuning helpers.
+# network-tuning.ps1 — shared TCP/QoS tuning helpers.
 # Dot-source this from the hotspot / health / standalone scripts so the ClampMss +
 # vboxnetflt logic lives in ONE place. Behavior is identical to the inlined versions
 # it replaces. Each function is self-contained and safe to call repeatedly.

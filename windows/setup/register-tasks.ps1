@@ -1,5 +1,14 @@
+param(
+  [string]$RuntimeDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'runtime'),
+  [string]$HostUser   = ("$env:USERDOMAIN\$env:USERNAME")
+)
 $ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Continue'
+
+# Tasks point at the staged runtime dir (default: sibling 'runtime' of this setup
+# folder). install.ps1 passes C:\home-server\runtime explicitly.
+$WslUp     = Join-Path $RuntimeDir 'keepalive-anchor.ps1'
+$WslHealth = Join-Path $RuntimeDir 'health-watchdog.ps1'
 
 Write-Output '=== Removing dead/superseded tasks ==='
 foreach ($t in 'AutoStartWSLBoot','AutoHotspot') {
@@ -16,14 +25,14 @@ if (Get-ScheduledTask -TaskName 'AutoStartWSL' -ErrorAction SilentlyContinue) {
   Write-Output 'Removed old AutoStartWSL'
 }
 
-$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\wsl-up.ps1'
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$WslUp`""
 
 # Two triggers: at ted's logon (autologon fires this) AND at startup (redundancy).
-$trigLogon = New-ScheduledTaskTrigger -AtLogOn -User '<hostname>\ted'
+$trigLogon = New-ScheduledTaskTrigger -AtLogOn -User $HostUser
 $trigBoot  = New-ScheduledTaskTrigger -AtStartup
 
 # Run as ted, interactive, highest privileges (user context => WSL systemd works).
-$principal = New-ScheduledTaskPrincipal -UserId '<hostname>\ted' -LogonType Interactive -RunLevel Highest
+$principal = New-ScheduledTaskPrincipal -UserId $HostUser -LogonType Interactive -RunLevel Highest
 
 # Settings: keepalive runs forever; restart if it dies; no time limit; start when available.
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit (New-TimeSpan -Seconds 0)
@@ -37,9 +46,9 @@ Write-Output '=== Creating WSLDockerHealth (every 5 min self-heal) ==='
 if (Get-ScheduledTask -TaskName 'WSLDockerHealth' -ErrorAction SilentlyContinue) {
   Unregister-ScheduledTask -TaskName 'WSLDockerHealth' -Confirm:$false
 }
-$haction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\wsl-health.ps1'
+$haction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$WslHealth`""
 $htrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration ([TimeSpan]::MaxValue)
-$hprincipal = New-ScheduledTaskPrincipal -UserId '<hostname>\ted' -LogonType Interactive -RunLevel Highest
+$hprincipal = New-ScheduledTaskPrincipal -UserId $HostUser -LogonType Interactive -RunLevel Highest
 $hsettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 4)
 $hsettings.MultipleInstances = 'IgnoreNew'
 Register-ScheduledTask -TaskName 'WSLDockerHealth' -Action $haction -Trigger $htrigger -Principal $hprincipal -Settings $hsettings -Description 'Every 5 min: ensure WSL keepalive task is running and Docker is up. Self-heal layer.' | Out-Null

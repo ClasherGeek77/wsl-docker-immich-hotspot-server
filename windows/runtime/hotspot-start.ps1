@@ -1,4 +1,4 @@
-# start-hotspot-now.ps1
+# hotspot-start.ps1
 # Starts the hotspot - works as SYSTEM or interactive.
 # HARDENED 2026-06-06: waits for an internet profile (USB modem may be slow at
 # boot), then verifies tethering actually reaches On and RETRIES, instead of
@@ -12,9 +12,9 @@ function Log($msg) {
     "$ts - $msg" | Out-File -Append -FilePath $logFile -Encoding UTF8
 }
 
-. (Join-Path $PSScriptRoot 'lib\net-tune.ps1')
+. (Join-Path $PSScriptRoot '..\lib\network-tuning.ps1')
 
-Log "=== start-hotspot-now.ps1 (hardened) ==="
+Log "=== hotspot-start.ps1 (hardened) ==="
 
 try {
     Add-Type -AssemblyName System.Runtime.WindowsRuntime
