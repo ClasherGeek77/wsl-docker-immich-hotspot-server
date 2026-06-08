@@ -1,0 +1,26 @@
+# Secrets — never commit real env files
+.env
+*.env
+!.env.example
+immich/.env
+
+# zrok / ziti identity material
+.zrok/
+.zrok2/
+*.zid
+*.json.identity
+
+# Runtime logs (these live on C:\ on the host, not in the repo)
+*.log
+wsl-up.log
+wsl-health.log
+hotspot-log.txt
+
+# Backups / scratch
+*.bak
+*.tmp
+
+# OS noise
+Thumbs.db
+.DS_Store
+desktop.ini
