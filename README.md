@@ -22,9 +22,11 @@ and TCP-stability fixes that make it survive reboots unattended.
 ## Hardware
 
 Runs on a **Fujitsu Lifebook U938** (Core i5/i7 Gen 8) + an **$8 USB 4G LTE modem** —
-**~$189 total**. The modem's advertised "500Mbps" is marketing; it is LTE Cat 4
-(~20-40 Mbps real), hard-capped by its own SoC, which is exactly why the TCP tuning
-exists. Full bill of materials, the honest modem spec, and the cheap-TCP-trick
+**~$189 total**. The modem's advertised "500Mbps" is marketing — it is LTE Cat 4
+(~20-40 Mbps over USB to the laptop), and the phone-facing hotspot is really capped by
+the laptop's Intel AC 8265 at ~12-13 Mbps. The two bottlenecks happen to match, and
+local Immich uploads are plenty fast. The cheap modem is also exactly why the TCP
+tuning exists. Full bill of materials, the honest modem spec, and the cheap-TCP-trick
 rationale: **[docs/hardware.md](docs/hardware.md)**.
 
 ## Repo layout

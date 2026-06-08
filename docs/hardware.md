@@ -55,13 +55,47 @@ The box says **500Mbps**. That is marketing fiction.
   saturates long before the air interface or USB bus does.
 - **RNDIS is a tax**: every frame is wrapped for USB transport with no offload, packet
   by packet, on that weak chip. Buffers are shallow and dumb.
-- **Real-world throughput: ~20–40 Mbps on a good day**, with bursty, lossy behavior.
+- **Real-world throughput over the USB cable to the laptop: ~20–40 Mbps** on a good
+  day, bursty and lossy. (The modem's *own* built-in Wi-Fi hotspot is throttled even
+  harder by its firmware — **~10 Mbps** — which is why we don't use it; see below.)
 
 Honest spec line:
 
 > **USB 4G LTE Modem — advertised "500Mbps"; actually LTE Cat 4 (≤150 Mbps PHY);
-> real-world ~20–40 Mbps; hard-capped by the modem's SoC + RNDIS overhead, not the
-> air interface or the USB bus.**
+> real-world ~20–40 Mbps over USB / ~10 Mbps on its own Wi-Fi; hard-capped by the
+> modem's SoC + RNDIS overhead, not the air interface or the USB bus.**
+
+## Two bottlenecks that happen to match 🎯
+
+There are **two different ceilings** depending on the path, and the nice part is they
+line up — so nothing is wasted.
+
+```
+Modem LTE (~20-40 Mbps over USB)
+   │
+   ├─► [USB] ─► Fujitsu laptop (server)        gets the full ~20-40 Mbps, wired
+   │
+   └─► modem's own Wi-Fi ── ~10 Mbps           (throttled by firmware — UNUSED)
+
+Fujitsu's Intel AC 8265 Wi-Fi, in SoftAP/hotspot mode
+   └─► re-broadcasts to phones ── ~12-13 Mbps  (the adapter is the limit here)
+```
+
+- **Internet → phone** (modem → laptop USB → laptop hotspot → phone): the ceiling is
+  the **laptop's Intel AC 8265 hotspot at ~12-13 Mbps**. The AC 8265 in SoftAP mode is
+  mediocre — it shares one radio between client and AP duties — but it's *higher* than
+  the modem's own 10 Mbps Wi-Fi, which is exactly why we route through the laptop
+  instead of letting phones connect to the modem directly.
+- **Phone → Immich upload** (phone → laptop hotspot → local Immich, **never touches the
+  modem**): this is pure **local LAN**. ~12-13 Mbps (~1.5 MB/s) is more than enough to
+  back up photos and videos over the air to a server one room away. For the actual job
+  this box exists to do, the hotspot speed is **already ideal**.
+
+**The realization:** the modem's real output (~20-40 Mbps) and the laptop's hotspot
+ceiling (~12-13 Mbps) are **roughly matched** — the Intel AC can't even fully consume
+what the modem delivers. So the "slow" modem costs nothing on the phone path, and
+buying a faster modem would be pointless: the AC 8265 hotspot would just throttle it
+back down anyway. **The two bottlenecks fit each other.**
 
 ## Why the "cheap TCP/IP trick" exists
 
@@ -97,3 +131,8 @@ re-applies the hotspot tuning on each start. The global bits (`autotuning`, `ECN
 - **The modem SoC is the permanent ceiling.** No amount of tuning lifts real
   throughput past what that chip can push; the tuning only stops it from collapsing
   *below* that ceiling under load.
+- **A faster modem would NOT help the phone path.** The laptop's Intel AC 8265 hotspot
+  (~12-13 Mbps) is already below the modem's ~20-40 Mbps USB output, so it's the binding
+  constraint for phones. Spend money on a **better Wi-Fi adapter / USB Wi-Fi 6 dongle in
+  AP mode** before a better modem — *that's* what would raise the phone ceiling. (Local
+  Immich uploads are already fine at 12-13 Mbps and don't need it.)
