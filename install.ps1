@@ -1,11 +1,11 @@
 <#
-  install.ps1 — one-click installer for the WSL+Docker+Immich+zrok+hotspot home server.
+  install.ps1  -  one-click installer for the WSL+Docker+Immich+zrok+hotspot home server.
 
   Run from an ELEVATED PowerShell, from the root of this repo:
 
       powershell -ExecutionPolicy Bypass -File .\install.ps1
 
-  What it does (interactive + safe; idempotent — re-run any time):
+  What it does (interactive + safe; idempotent  -  re-run any time):
     1. Checks prerequisites (admin, WSL distro, Docker in WSL).
     2. Stages the Windows scripts to C:\home-server\ (runtime\ + setup\ + lib\).
     3. Ensures immich\.env exists (prompts for the secret values if missing).
@@ -47,7 +47,7 @@ Ok "WSL distro '$Distro' present."
 
 $dockerActive = (wsl.exe -d $Distro -u root -- bash -c 'systemctl is-active docker 2>/dev/null || echo down' 2>&1 |
                  Out-String).Trim()
-if ($dockerActive -notmatch 'active') { Warn "Docker not active yet in WSL (=$dockerActive) — the keepalive task will start it." }
+if ($dockerActive -notmatch 'active') { Warn "Docker not active yet in WSL (=$dockerActive)  -  the keepalive task will start it." }
 else { Ok 'Docker active in WSL.' }
 
 # --- 2. Stage scripts to InstallRoot ---------------------------------------
@@ -65,16 +65,16 @@ Step 3 'Ensuring immich\.env'
 $envPath     = Join-Path $repo 'immich\.env'
 $envExample  = Join-Path $repo 'immich\.env.example'
 if (Test-Path $envPath) {
-  Ok '.env already exists — leaving it untouched.'
+  Ok '.env already exists  -  leaving it untouched.'
 } else {
-  Warn '.env not found — creating from .env.example and prompting for secrets.'
+  Warn '.env not found  -  creating from .env.example and prompting for secrets.'
   $content = Get-Content $envExample -Raw
   foreach ($key in 'DB_PASSWORD','ZROK_ENABLE_TOKEN','ZROK_SHARE_NAME','HOTSPOT_SSID','HOTSPOT_PASSPHRASE') {
     $val = Read-Host "    Enter $key"
     $content = $content -replace "(?m)^$key=.*$", "$key=$val"
   }
   Set-Content -Path $envPath -Value $content -Encoding UTF8
-  Ok '.env written (gitignored — never committed).'
+  Ok '.env written (gitignored  -  never committed).'
 }
 
 # --- 4. Register scheduled tasks -------------------------------------------
