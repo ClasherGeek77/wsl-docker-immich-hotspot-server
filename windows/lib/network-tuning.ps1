@@ -33,12 +33,14 @@ function Set-HotspotTcpTuning {
 
 function Set-GlobalTcpTuning {
     # Registry-backed; these survive reboot. autotuning bounded for the ICS NAT,
-    # ECN for graceful backoff, CTCP for variable-latency LTE links.
+    # ECN for graceful backoff, CUBIC for variable-latency LTE links.
     param([scriptblock]$Log = { param($m) })
-    netsh int tcp set global autotuninglevel=restricted | Out-Null
+    netsh int tcp set global autotuninglevel=normal | Out-Null
     netsh int tcp set global ecncapability=enabled | Out-Null
-    netsh int tcp set supplemental template=Internet CongestionProvider=CTCP | Out-Null
-    & $Log 'Global TCP: autotuning=restricted, ecn=enabled, provider=CTCP'
+    netsh int tcp set global timestamps=enabled | Out-Null
+    netsh int tcp set global pacingprofile=slowstart | Out-Null
+    netsh int tcp set supplemental template=Internet CongestionProvider=CUBIC | Out-Null
+    & $Log 'Global TCP: autotuning=normal, ecn=enabled, timestamps=enabled, pacing=slowstart, provider=CUBIC'
 
     # Disable hotspot timeouts (set PeerlessTimeout and PublicConnectionTimeout to 1440 min)
     New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings' -Name 'PeerlessTimeout' -Value 1440 -PropertyType DWORD -Force | Out-Null
