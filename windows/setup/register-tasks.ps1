@@ -1,6 +1,6 @@
 param(
   [string]$RuntimeDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'runtime'),
-  [string]$HostUser   = ("$env:USERDOMAIN\$env:USERNAME")
+  [string]$HostUser   = ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)
 )
 $ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Continue'
