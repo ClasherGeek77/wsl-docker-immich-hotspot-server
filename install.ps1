@@ -84,9 +84,13 @@ $hostUser = "$env:USERDOMAIN\$env:USERNAME"
     -RuntimeDir (Join-Path $InstallRoot 'runtime') -HostUser $hostUser
 Ok "Tasks registered for $hostUser, pointing at $InstallRoot\runtime."
 
-# --- 5. Immich / zrok stack -------------------------------------------------
+# --- 5. WSL TCP BBR Optimization & Docker Stack -----------------------------
 if (-not $SkipDocker) {
-  Step 5 'Bringing up the Immich/zrok Docker stack'
+  Step 5 'Configuring WSL TCP BBR & Network buffer limits'
+  wsl.exe -d $Distro -u root -- bash -c "modprobe tcp_bbr; echo 'tcp_bbr' >> /etc/modules; echo 'net.core.default_qdisc = fq' >> /etc/sysctl.d/99-sysctl.conf; echo 'net.ipv4.tcp_congestion_control = bbr' >> /etc/sysctl.d/99-sysctl.conf; echo 'net.core.rmem_max = 16777216' >> /etc/sysctl.d/99-sysctl.conf; echo 'net.core.wmem_max = 16777216' >> /etc/sysctl.d/99-sysctl.conf; echo 'net.ipv4.tcp_rmem = 4096 87380 16777216' >> /etc/sysctl.d/99-sysctl.conf; echo 'net.ipv4.tcp_wmem = 4096 65536 16777216' >> /etc/sysctl.d/99-sysctl.conf; sysctl -p /etc/sysctl.d/99-sysctl.conf" 2>&1 | Out-Null
+  Ok 'WSL BBR enabled.'
+
+  Step 5.1 'Bringing up the Immich/zrok Docker stack'
   $immichWsl = (wsl.exe -d $Distro -u root -- wslpath -a "$(Join-Path $repo 'immich')" 2>$null).Trim()
   if (-not $immichWsl) { $immichWsl = '/mnt/d/home-server/immich' }  # fallback to known host path
   wsl.exe -d $Distro -u root -- bash -c "cd '$immichWsl' && docker compose up -d" 2>&1 | Write-Host
