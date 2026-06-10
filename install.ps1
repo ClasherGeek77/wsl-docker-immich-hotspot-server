@@ -91,7 +91,7 @@ if (-not $SkipDocker) {
   Ok 'WSL BBR enabled.'
 
   Step 5.1 'Bringing up the Immich/zrok Docker stack'
-  $immichWsl = (wsl.exe -d $Distro -u root -- wslpath -a "$(Join-Path $repo 'immich')" 2>$null).Trim()
+  $immichWsl = (wsl.exe -d $Distro -u root -- wslpath -a "$((Join-Path $repo 'immich') -replace '\\\\', '/')" 2>$null).Trim()
   if (-not $immichWsl) { $immichWsl = '/mnt/d/home-server/immich' }  # fallback to known host path
   wsl.exe -d $Distro -u root -- bash -c "cd '$immichWsl' && docker compose up -d" 2>&1 | Write-Host
   Ok 'docker compose up -d issued.'
