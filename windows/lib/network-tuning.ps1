@@ -77,11 +77,9 @@ function Set-GlobalTcpTuning {
     powercfg /SETACTIVE SCHEME_CURRENT | Out-Null
 
     if (Get-NetAdapter -Name 'Wi-Fi' -ErrorAction SilentlyContinue) {
-        Set-NetAdapterAdvancedProperty -Name 'Wi-Fi' -RegistryKeyword 'MIMOPowerSaveMode' -RegistryValue '3' -ErrorAction SilentlyContinue | Out-Null
-        Set-NetAdapterAdvancedProperty -Name 'Wi-Fi' -RegistryKeyword 'ThroughputBoosterEnabled' -RegistryValue '1' -ErrorAction SilentlyContinue | Out-Null
         Set-NetAdapterAdvancedProperty -Name 'Wi-Fi' -RegistryKeyword 'RoamingPreferredBandType' -RegistryValue '2' -ErrorAction SilentlyContinue | Out-Null
     }
-    & $Log 'Wi-Fi: Power Plan set to Max Performance, MIMO SMPS disabled, Throughput Booster enabled, Prefer 5GHz'
+    & $Log 'Wi-Fi: Power Plan set to Max Performance, Prefer 5GHz'
 
     # Disable hotspot timeouts (set PeerlessTimeout and PublicConnectionTimeout to 1440 min)
     New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings' -Name 'PeerlessTimeout' -Value 1440 -PropertyType DWORD -Force | Out-Null
