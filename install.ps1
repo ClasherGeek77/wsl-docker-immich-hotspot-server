@@ -27,7 +27,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repo = $PSScriptRoot
+$repo = (Get-Item .).FullName
 
 function Step($n, $msg) { Write-Host "`n[$n] $msg" -ForegroundColor Cyan }
 function Ok($msg)       { Write-Host "    OK  $msg" -ForegroundColor Green }
