@@ -42,6 +42,32 @@ function Set-GlobalTcpTuning {
     netsh int tcp set supplemental template=Internet CongestionProvider=CUBIC | Out-Null
     & $Log 'Global TCP: autotuning=normal, ecn=enabled, timestamps=enabled, pacing=slowstart, provider=CUBIC'
 
+    # TTL Throttling Bypass (set DefaultTTL to 65 so it decrements to 64 at NAT boundary)
+    New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters' -Name 'DefaultTTL' -Value 65 -PropertyType DWord -Force | Out-Null
+    New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters' -Name 'DefaultTTL' -Value 65 -PropertyType DWord -Force | Out-Null
+    & $Log 'TTL Bypass: DefaultTTL set to 65'
+
+    # Nagle's & Delayed ACK Disable
+    $interfaces = Get-ChildItem -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces'
+    foreach ($if in $interfaces) {
+        if (Get-ItemProperty -Path $if.PSPath -Name 'TcpAckFrequency' -ErrorAction SilentlyContinue) {
+            Set-ItemProperty -Path $if.PSPath -Name 'TcpAckFrequency' -Value 1 -Force
+        } else {
+            New-ItemProperty -Path $if.PSPath -Name 'TcpAckFrequency' -Value 1 -PropertyType DWord -Force | Out-Null
+        }
+        if (Get-ItemProperty -Path $if.PSPath -Name 'TCPNoDelay' -ErrorAction SilentlyContinue) {
+            Set-ItemProperty -Path $if.PSPath -Name 'TCPNoDelay' -Value 1 -Force
+        } else {
+            New-ItemProperty -Path $if.PSPath -Name 'TCPNoDelay' -Value 1 -PropertyType DWord -Force | Out-Null
+        }
+    }
+    & $Log 'Latency Optimization: Delayed ACK and Nagle disabled'
+
+    # System Network Throttling Disable
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' -Name 'NetworkThrottlingIndex' -Value 4294967295 -Force | Out-Null
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' -Name 'SystemResponsiveness' -Value 0 -Force | Out-Null
+    & $Log 'System: Network Throttling disabled'
+
     # Disable hotspot timeouts (set PeerlessTimeout and PublicConnectionTimeout to 1440 min)
     New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings' -Name 'PeerlessTimeout' -Value 1440 -PropertyType DWORD -Force | Out-Null
     New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings' -Name 'PublicConnectionTimeout' -Value 1440 -PropertyType DWORD -Force | Out-Null
