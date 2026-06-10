@@ -40,7 +40,7 @@ $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIden
 if (-not $isAdmin) { throw 'Must run as Administrator (needed for scheduled tasks + netsh).' }
 Ok 'Running elevated.'
 
-if (-not (wsl.exe -l -q 2>$null | Select-String -SimpleMatch $Distro)) {
+$wslRaw = wsl.exe -l -q 2>$null; $distros = ($wslRaw -join "") -replace "\x00", ""; if ($distros -notmatch $Distro) {
   throw "WSL distro '$Distro' not found. Install it first: wsl --install -d $Distro"
 }
 Ok "WSL distro '$Distro' present."
