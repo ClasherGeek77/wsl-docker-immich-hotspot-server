@@ -39,4 +39,10 @@ function Set-GlobalTcpTuning {
     netsh int tcp set global ecncapability=enabled | Out-Null
     netsh int tcp set supplemental template=Internet CongestionProvider=CTCP | Out-Null
     & $Log 'Global TCP: autotuning=restricted, ecn=enabled, provider=CTCP'
+
+    # Disable hotspot timeouts (set PeerlessTimeout and PublicConnectionTimeout to 1440 min)
+    New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings' -Name 'PeerlessTimeout' -Value 1440 -PropertyType DWORD -Force | Out-Null
+    New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings' -Name 'PublicConnectionTimeout' -Value 1440 -PropertyType DWORD -Force | Out-Null
+    Restart-Service -Name icssvc -Force -ErrorAction SilentlyContinue
+    & $Log 'Hotspot Timeout: disabled (PeerlessTimeout=1440, PublicConnectionTimeout=1440)'
 }

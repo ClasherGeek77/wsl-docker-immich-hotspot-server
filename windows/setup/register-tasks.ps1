@@ -54,5 +54,18 @@ $hsettings.MultipleInstances = 'IgnoreNew'
 Register-ScheduledTask -TaskName 'WSLDockerHealth' -Action $haction -Trigger $htrigger -Principal $hprincipal -Settings $hsettings -Description 'Every 5 min: ensure WSL keepalive task is running and Docker is up. Self-heal layer.' | Out-Null
 Write-Output 'Registered WSLDockerHealth'
 
+Write-Output '=== Creating AutoHotspotHealth (every 5 min hotspot self-heal) ==='
+if (Get-ScheduledTask -TaskName 'AutoHotspotHealth' -ErrorAction SilentlyContinue) {
+  Unregister-ScheduledTask -TaskName 'AutoHotspotHealth' -Confirm:$false
+}
+$hotspotScript = Join-Path $RuntimeDir 'hotspot-start.ps1'
+$hactionHotspot = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hotspotScript`""
+$htriggerHotspot = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration ([TimeSpan]::MaxValue)
+$hprincipalHotspot = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -RunLevel Highest
+$hsettingsHotspot = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+$hsettingsHotspot.MultipleInstances = 'IgnoreNew'
+Register-ScheduledTask -TaskName 'AutoHotspotHealth' -Action $hactionHotspot -Trigger $htriggerHotspot -Principal $hprincipalHotspot -Settings $hsettingsHotspot -Description 'Every 5 min: ensure hotspot is active and apply TCP tuning. Self-heal layer.' | Out-Null
+Write-Output 'Registered AutoHotspotHealth'
+
 Write-Output '=== Final task inventory ==='
 Get-ScheduledTask | Where-Object {$_.TaskName -match 'WSL|Hotspot|Docker'} | Select-Object TaskName,State | Format-Table -AutoSize
