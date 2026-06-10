@@ -93,7 +93,10 @@ if (-not $SkipDocker) {
   Step 5.1 'Bringing up the Immich/zrok Docker stack'
   $immichWsl = (wsl.exe -d $Distro -u root -- wslpath -a "$((Join-Path $repo 'immich') -replace '\\', '/')" 2>$null).Trim()
   if (-not $immichWsl) { $immichWsl = '/mnt/d/home-server/immich' }  # fallback to known host path
+  $oldEAP = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
   wsl.exe -d $Distro -u root -- bash -c "cd '$immichWsl' && docker compose up -d" 2>&1 | Write-Host
+  $ErrorActionPreference = $oldEAP
   Ok 'docker compose up -d issued.'
 } else { Warn 'Skipping Docker stack (-SkipDocker).' }
 
