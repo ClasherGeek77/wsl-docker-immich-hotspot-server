@@ -10,7 +10,9 @@ function Set-ModemClampMss {
     $modem = Get-NetAdapter | Where-Object { $_.InterfaceDescription -like 'Remote NDIS*' -and $_.Status -eq 'Up' } | Select-Object -First 1
     if ($modem) {
         Set-NetIPInterface -InterfaceAlias $modem.Name -ClampMss Enabled -ErrorAction SilentlyContinue
-        & $Log ('ClampMss applied to modem: ' + $modem.Name)
+        netsh interface ipv4 set subinterface $modem.Name mtu=1400 store=persistent | Out-Null
+        Set-DnsClientServerAddress -InterfaceAlias $modem.Name -ServerAddresses ('1.1.1.1', '1.0.0.1') -ErrorAction SilentlyContinue
+        & $Log ('ClampMss, MTU=1400, and Cloudflare DNS applied to modem: ' + $modem.Name)
     } else {
         & $Log 'ClampMss: USB modem (Remote NDIS) not up, skipped.'
     }
@@ -24,8 +26,9 @@ function Set-HotspotTcpTuning {
     $hotspot = Get-NetAdapter | Where-Object { $_.InterfaceDescription -like 'Microsoft Wi-Fi Direct Virtual Adapter*' -and $_.Status -eq 'Up' } | Select-Object -First 1
     if ($hotspot) {
         Set-NetIPInterface -InterfaceAlias $hotspot.Name -ClampMss Enabled -ErrorAction SilentlyContinue
+        netsh interface ipv4 set subinterface $hotspot.Name mtu=1400 store=persistent | Out-Null
         Disable-NetAdapterBinding -Name $hotspot.Name -ComponentID vboxnetflt -ErrorAction SilentlyContinue
-        & $Log ('TCP tuning applied to hotspot: ' + $hotspot.Name + ' (ClampMss=On, vboxnetflt unbound)')
+        & $Log ('TCP tuning and MTU=1400 applied to hotspot: ' + $hotspot.Name + ' (ClampMss=On, vboxnetflt unbound)')
     } else {
         & $Log 'Hotspot TCP tuning: Wi-Fi Direct adapter not up, skipped.'
     }
