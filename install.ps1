@@ -79,7 +79,7 @@ if (Test-Path $envPath) {
 
 # --- 4. Register scheduled tasks -------------------------------------------
 Step 4 'Registering scheduled tasks (keepalive anchor + health watchdog)'
-$hostUser = "$env:USERDOMAIN\$env:USERNAME"
+$hostUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 & (Join-Path $InstallRoot 'setup\register-tasks.ps1') `
     -RuntimeDir (Join-Path $InstallRoot 'runtime') -HostUser $hostUser
 Ok "Tasks registered for $hostUser, pointing at $InstallRoot\runtime."
