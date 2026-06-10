@@ -71,6 +71,17 @@ function Set-GlobalTcpTuning {
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' -Name 'SystemResponsiveness' -Value 0 -Force | Out-Null
     & $Log 'System: Network Throttling disabled'
 
+    # Wi-Fi Adapter Optimizations (MIMO, Transmit Power, Power Plan)
+    powercfg /SETACVALUEINDEX SCHEME_CURRENT 19cbb8fa-5279-450e-9fac-8a3d5fedd0c1 12bbebe6-58d6-4636-95bb-3217ef867c1a 0 | Out-Null
+    powercfg /SETDCVALUEINDEX SCHEME_CURRENT 19cbb8fa-5279-450e-9fac-8a3d5fedd0c1 12bbebe6-58d6-4636-95bb-3217ef867c1a 0 | Out-Null
+    powercfg /SETACTIVE SCHEME_CURRENT | Out-Null
+
+    if (Get-NetAdapter -Name 'Wi-Fi' -ErrorAction SilentlyContinue) {
+        Set-NetAdapterAdvancedProperty -Name 'Wi-Fi' -RegistryKeyword 'MIMOPowerSaveMode' -RegistryValue '3' -ErrorAction SilentlyContinue | Out-Null
+        Set-NetAdapterAdvancedProperty -Name 'Wi-Fi' -RegistryKeyword 'ThroughputBoosterEnabled' -RegistryValue '1' -ErrorAction SilentlyContinue | Out-Null
+    }
+    & $Log 'Wi-Fi: Power Plan set to Max Performance, MIMO SMPS disabled, Throughput Booster enabled'
+
     # Disable hotspot timeouts (set PeerlessTimeout and PublicConnectionTimeout to 1440 min)
     New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings' -Name 'PeerlessTimeout' -Value 1440 -PropertyType DWORD -Force | Out-Null
     New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings' -Name 'PublicConnectionTimeout' -Value 1440 -PropertyType DWORD -Force | Out-Null
