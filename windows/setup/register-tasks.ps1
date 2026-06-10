@@ -47,7 +47,7 @@ if (Get-ScheduledTask -TaskName 'WSLDockerHealth' -ErrorAction SilentlyContinue)
   Unregister-ScheduledTask -TaskName 'WSLDockerHealth' -Confirm:$false
 }
 $haction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$WslHealth`""
-$htrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration ([TimeSpan]::MaxValue)
+$htrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration ([TimeSpan]::FromDays(9999))
 $hprincipal = New-ScheduledTaskPrincipal -UserId $HostUser -LogonType Interactive -RunLevel Highest
 $hsettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 4)
 $hsettings.MultipleInstances = 'IgnoreNew'
@@ -60,7 +60,7 @@ if (Get-ScheduledTask -TaskName 'AutoHotspotHealth' -ErrorAction SilentlyContinu
 }
 $hotspotScript = Join-Path $RuntimeDir 'hotspot-start.ps1'
 $hactionHotspot = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hotspotScript`""
-$htriggerHotspot = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration ([TimeSpan]::MaxValue)
+$htriggerHotspot = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration ([TimeSpan]::FromDays(9999))
 $hprincipalHotspot = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -RunLevel Highest
 $hsettingsHotspot = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
 $hsettingsHotspot.MultipleInstances = 'IgnoreNew'
